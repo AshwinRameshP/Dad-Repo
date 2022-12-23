@@ -19,7 +19,7 @@ if __name__ == "__main__":
     #Pre-Processing
     updated_df = pre_process(df)
     print(updated_df)
-    #updated_df.to_excel("output.xlsx")
-    
+    updated_df.to_excel("output.xlsx",index=False)
+        
 
 
