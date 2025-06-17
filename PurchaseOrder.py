@@ -7,9 +7,11 @@ RATHISH MOTORS
 #Packages
 import pandas as pd
 
+partNoKey = 'PART NO'
+
 def filter_PartNO(dataFrame):
     updated_dataFrame = dataFrame
-    updated_dataFrame['PART NO'] = updated_dataFrame['PART NO'].str.split(r'\*|\s',expand=False).str[0]
+    updated_dataFrame[partNoKey] = updated_dataFrame[partNoKey].str.split(r'\*|\s',expand=False).str[0]
     return updated_dataFrame
 
 def QuantityCheck(dataframe):
@@ -20,7 +22,7 @@ def QuantityCheck(dataframe):
 
 if __name__ == "__main__":
     #Read Excel file
-    df = pd.read_excel('PUR-ORDER-RATHISH-RISHABH-15.07.2024.xlsx')
+    df = pd.read_excel('PUR-ORDER-RATHISH-RISHABH-03.06.2025.xlsx')
     #print(df)
     #Pre-Processing
     updated_df = filter_PartNO(df)
