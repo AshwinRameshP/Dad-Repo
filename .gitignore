@@ -38,3 +38,6 @@
    #pem files
    RM_WebApp.pem
    *.pem
+
+# Access Keys
+Ashwin_accessKeys.csv
