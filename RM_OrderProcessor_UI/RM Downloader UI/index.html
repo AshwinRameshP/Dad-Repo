@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S3 File Manager</title>
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1001.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+            padding: 25px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #f9fafb;
+        }
+
+        .section h2 {
+            color: #374151;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+        }
+
+        .btn-secondary:hover {
+            box-shadow: 0 4px 12px rgba(107, 114, 128, 0.3);
+        }
+
+        .file-list {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .file-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f3f4f6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .file-item:hover {
+            background-color: #f9fafb;
+        }
+
+        .file-item:active {
+            background-color: #f3f4f6;
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .file-name {
+            font-weight: 500;
+            color: #374151;
+            flex: 1;
+            margin-right: 10px;
+        }
+
+        .file-size {
+            color: #6b7280;
+            font-size: 0.9rem;
+            margin-right: 10px;
+        }
+
+        .file-url {
+            color: #4f46e5;
+            font-size: 0.8rem;
+            opacity: 0.7;
+            word-break: break-all;
+            max-width: 200px;
+        }
+
+        .copy-indicator {
+            background: #10b981;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            animation: fadeInOut 2s ease-in-out;
+        }
+
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+
+        .upload-area {
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            background: #f9fafb;
+            transition: border-color 0.2s;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: #4f46e5;
+        }
+
+        .upload-area.dragover {
+            border-color: #4f46e5;
+            background: #f0f9ff;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4f46e5, #7c3aed);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .status.info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4f46e5;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .credentials-saved {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border: 1px solid #a7f3d0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📁 S3 File Manager</h1>
+            <p>Upload and manage files in your AWS S3 bucket</p>
+        </div>
+
+        <div class="content">
+            <!-- AWS Credentials Section -->
+            <div class="section">
+                <h2>🔑 AWS Credentials</h2>
+                <div id="credentialsSaved" class="credentials-saved hidden">
+                    ✓ Credentials saved! You can now list files and upload.
+                </div>
+                <div class="form-group">
+                    <label for="accessKeyId">Access Key ID</label>
+                    <input type="text" id="accessKeyId" placeholder="AKIA...">
+                </div>
+                <div class="form-group">
+                    <label for="secretAccessKey">Secret Access Key</label>
+                    <input type="password" id="secretAccessKey" placeholder="Enter your secret access key">
+                </div>
+                <div class="form-group">
+                    <label for="region">AWS Region</label>
+                    <input type="text" id="region" placeholder="eu-west-1" value="eu-west-1">
+                </div>
+                <div class="form-group">
+                    <label for="bucketName">Bucket Name</label>
+                    <input type="text" id="bucketName" placeholder="my-bucket">
+                </div>
+                <div class="form-group">
+                    <label for="folderPrefix">Folder Prefix</label>
+                    <input type="text" id="folderPrefix" placeholder="csm-uploads/" value="csm-uploads/">
+                </div>
+                <div class="form-group">
+                    <label for="cdnPrefix">CDN Prefix (Optional)</label>
+                    <input type="text" id="cdnPrefix" placeholder="" value="">
+                    <small style="color: #6b7280; font-size: 0.9rem;">This will be prepended to file URLs when copying</small>
+                </div>
+                <button class="btn" onclick="saveCredentials()">Save Credentials</button>
+            </div>
+
+            <!-- File List Section -->
+            <div class="section">
+                <h2>📋 Files in S3</h2>
+                <button class="btn btn-secondary" onclick="listFiles()" id="listBtn">
+                    <span id="listBtnText">List Files</span>
+                    <span id="listBtnSpinner" class="loading hidden"></span>
+                </button>
+                <div id="fileList" class="file-list hidden"></div>
+                <div id="listStatus"></div>
+            </div>
+
+            <!-- Upload Section -->
+            <div class="section">
+                <h2>⬆️ Upload File</h2>
+                <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+                    <p>Click to select a file or drag and drop</p>
+                    <p style="font-size: 0.9rem; color: #6b7280; margin-top: 10px;">
+                        Files will be uploaded to: <span id="uploadPath">[bucket]/[prefix]</span>
+                    </p>
+                </div>
+                <input type="file" id="fileInput" class="hidden" onchange="handleFileSelect(event)">
+                <div id="uploadProgress" class="hidden">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div id="uploadStatus" class="status info"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let awsConfig = null;
+        let s3Client = null;
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            setupDragAndDrop();
+            loadCredentials();
+            updateUploadPath();
+        });
+
+        // Setup drag and drop functionality
+        function setupDragAndDrop() {
+            const uploadArea = document.getElementById('uploadArea');
+            
+            uploadArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleFileUpload(files[0]);
+                }
+            });
+        }
+
+        // Save AWS credentials
+        function saveCredentials() {
+            const accessKeyId = document.getElementById('accessKeyId').value.trim();
+            const secretAccessKey = document.getElementById('secretAccessKey').value.trim();
+            const region = document.getElementById('region').value.trim();
+            const bucketName = document.getElementById('bucketName').value.trim();
+            const folderPrefix = document.getElementById('folderPrefix').value.trim();
+
+            // Validate inputs
+            if (!accessKeyId || !secretAccessKey || !region || !bucketName) {
+                showStatus('listStatus', 'Please fill in all required fields.', 'error');
+                return;
+            }
+
+            if (!folderPrefix.endsWith('/')) {
+                showStatus('listStatus', 'Folder prefix should end with a slash (/)', 'error');
+                return;
+            }
+
+            // Save credentials to localStorage
+            const cdnPrefix = document.getElementById('cdnPrefix').value.trim();
+            const credentials = {
+                accessKeyId,
+                secretAccessKey,
+                region,
+                bucketName,
+                folderPrefix,
+                cdnPrefix
+            };
+            localStorage.setItem('s3Credentials', JSON.stringify(credentials));
+
+            // Initialize AWS SDK
+            awsConfig = credentials;
+            AWS.config.update({
+                accessKeyId: credentials.accessKeyId,
+                secretAccessKey: credentials.secretAccessKey,
+                region: credentials.region
+            });
+
+            s3Client = new AWS.S3();
+
+            // Show success message
+            document.getElementById('credentialsSaved').classList.remove('hidden');
+            showStatus('listStatus', 'Credentials saved successfully!', 'success');
+            updateUploadPath();
+        }
+
+        // Load saved credentials
+        function loadCredentials() {
+            const saved = localStorage.getItem('s3Credentials');
+            if (saved) {
+                const credentials = JSON.parse(saved);
+                document.getElementById('accessKeyId').value = credentials.accessKeyId;
+                document.getElementById('secretAccessKey').value = credentials.secretAccessKey;
+                document.getElementById('region').value = credentials.region;
+                document.getElementById('bucketName').value = credentials.bucketName;
+                document.getElementById('folderPrefix').value = credentials.folderPrefix;
+                document.getElementById('cdnPrefix').value = credentials.cdnPrefix || '';
+                
+                // Initialize AWS SDK with saved credentials
+                awsConfig = credentials;
+                AWS.config.update({
+                    accessKeyId: credentials.accessKeyId,
+                    secretAccessKey: credentials.secretAccessKey,
+                    region: credentials.region
+                });
+                s3Client = new AWS.S3();
+                document.getElementById('credentialsSaved').classList.remove('hidden');
+                updateUploadPath();
+            }
+        }
+
+        // Update upload path display
+        function updateUploadPath() {
+            const bucketName = document.getElementById('bucketName').value;
+            const folderPrefix = document.getElementById('folderPrefix').value;
+            if (bucketName && folderPrefix) {
+                document.getElementById('uploadPath').textContent = `${bucketName}/${folderPrefix}`;
+            }
+        }
+
+        // List files in S3 bucket
+        function listFiles() {
+            if (!s3Client) {
+                showStatus('listStatus', 'Please save your credentials first.', 'error');
+                return;
+            }
+
+            const bucketName = document.getElementById('bucketName').value.trim();
+            const folderPrefix = document.getElementById('folderPrefix').value.trim();
+
+            if (!bucketName ) {
+                showStatus('listStatus', 'Please enter bucket name.', 'error');
+                return;
+            }
+
+            // Show loading state
+            const listBtn = document.getElementById('listBtn');
+            const listBtnText = document.getElementById('listBtnText');
+            const listBtnSpinner = document.getElementById('listBtnSpinner');
+            
+            listBtn.disabled = true;
+            listBtnText.textContent = 'Loading...';
+            listBtnSpinner.classList.remove('hidden');
+
+            const params = {
+                Bucket: bucketName,
+                Prefix: folderPrefix,
+                MaxKeys: 100
+            };
+
+            s3Client.listObjectsV2(params, function(err, data) {
+                // Reset button state
+                listBtn.disabled = false;
+                listBtnText.textContent = 'List Files';
+                listBtnSpinner.classList.add('hidden');
+
+                if (err) {
+                    // Handle CORS errors specifically
+                    if (err.code === 'NetworkingError' || err.message.includes('CORS') || err.message.includes('Access-Control-Allow-Origin')) {
+                        showStatus('listStatus', `CORS Error: Your S3 bucket needs CORS configuration. See instructions below.`, 'error');
+                        showCorsInstructions();
+                    } else {
+                        showStatus('listStatus', `Error: ${err.message}`, 'error');
+                    }
+                    return;
+                }
+
+                displayFileList(data.Contents || []);
+                showStatus('listStatus', `Found ${data.Contents ? data.Contents.length : 0} files`, 'success');
+            });
+        }
+
+        // Display file list
+        function displayFileList(files) {
+            const fileList = document.getElementById('fileList');
+            fileList.classList.remove('hidden');
+
+            if (files.length === 0) {
+                fileList.innerHTML = '<div class="file-item"><span class="file-name">No files found</span></div>';
+                return;
+            }
+
+            const folderPrefix = document.getElementById('folderPrefix').value;
+            const cdnPrefix = document.getElementById('cdnPrefix').value.trim();
+            const fileItems = files
+                .filter(file => file.Key !== folderPrefix) // Exclude the folder itself
+                .map(file => {
+                    const fileName = file.Key.replace(folderPrefix, '');
+                    const fileSize = formatFileSize(file.Size);
+                    const fileUrl = cdnPrefix ? `${cdnPrefix}${fileName}` : `https://${document.getElementById('bucketName').value}.s3.${document.getElementById('region').value}.amazonaws.com/${file.Key}`;
+                    return `
+                        <div class="file-item" onclick="window.open('${fileUrl}', this)">
+                            <span class="file-name">${fileName}</span>
+                            <span class="file-size">${fileSize}</span>
+                            <span class="file-url">${cdnPrefix ? 'CDN URL' : 'S3 Path'}</span>
+                        </div>
+                    `;
+                })
+                .join('');
+
+            fileList.innerHTML = fileItems;
+        }
+
+        // Format file size
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Handle file selection
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                handleFileUpload(file);
+            }
+        }
+
+        // Handle file upload
+        function handleFileUpload(file) {
+            if (!s3Client) {
+                showStatus('uploadStatus', 'Please save your credentials first.', 'error');
+                return;
+            }
+
+            const bucketName = document.getElementById('bucketName').value.trim();
+            const folderPrefix = document.getElementById('folderPrefix').value.trim();
+
+            if (!bucketName || !folderPrefix) {
+                showStatus('uploadStatus', 'Please enter bucket name and folder prefix.', 'error');
+                return;
+            }
+
+            // Show upload progress
+            const uploadProgress = document.getElementById('uploadProgress');
+            const progressFill = document.getElementById('progressFill');
+            uploadProgress.classList.remove('hidden');
+            progressFill.style.width = '0%';
+
+            const key = folderPrefix + file.name;
+            const params = {
+                Bucket: bucketName,
+                Key: key,
+                Body: file,
+                ContentType: file.type
+            };
+
+            // Create upload manager for progress tracking
+            const upload = s3Client.upload(params);
+
+            upload.on('httpUploadProgress', function(progress) {
+                const percentage = Math.round((progress.loaded / progress.total) * 100);
+                progressFill.style.width = percentage + '%';
+                showStatus('uploadStatus', `Uploading: ${percentage}%`, 'info');
+            });
+
+            upload.send(function(err, data) {
+                if (err) {
+                    // Handle CORS errors specifically
+                    if (err.code === 'NetworkingError' || err.message.includes('CORS') || err.message.includes('Access-Control-Allow-Origin')) {
+                        showStatus('uploadStatus', `CORS Error: Your S3 bucket needs CORS configuration. See instructions above.`, 'error');
+                    } else {
+                        showStatus('uploadStatus', `Upload failed: ${err.message}`, 'error');
+                    }
+                    return;
+                }
+
+                showStatus('uploadStatus', `File uploaded successfully! URL: ${data.Location}`, 'success');
+                progressFill.style.width = '100%';
+                
+                // Refresh file list
+                setTimeout(() => {
+                    listFiles();
+                }, 1000);
+            });
+        }
+
+        // Show status message
+        function showStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `status ${type}`;
+        }
+
+        // Show CORS configuration instructions
+        function showCorsInstructions() {
+            const corsInstructions = `
+                <div style="margin-top: 20px; padding: 20px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px;">
+                    <h3 style="color: #92400e; margin-bottom: 15px;">🔧 CORS Configuration Required</h3>
+                    <p style="color: #92400e; margin-bottom: 15px;">Your S3 bucket needs CORS configuration to allow browser access. Here's how to fix it:</p>
+                    
+                    <h4 style="color: #92400e; margin-bottom: 10px;">Option 1: AWS Console</h4>
+                    <ol style="color: #92400e; margin-bottom: 15px; padding-left: 20px;">
+                        <li>Go to AWS S3 Console</li>
+                        <li>Select your bucket: <strong>${document.getElementById('bucketName').value}</strong></li>
+                        <li>Click "Permissions" tab</li>
+                        <li>Scroll to "Cross-origin resource sharing (CORS)"</li>
+                        <li>Click "Edit" and paste this configuration:</li>
+                    </ol>
+                    
+                    <pre style="background: #1f2937; color: #f9fafb; padding: 15px; border-radius: 4px; overflow-x: auto; margin-bottom: 15px;"><code>[
+  {
+    "AllowedHeaders": ["*"],
+    "AllowedMethods": ["GET", "PUT", "POST", "DELETE", "HEAD"],
+    "AllowedOrigins": ["*"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3000
+  }
+]</code></pre>
+                    
+                    <h4 style="color: #92400e; margin-bottom: 10px;">Option 2: AWS CLI</h4>
+                    <p style="color: #92400e; margin-bottom: 10px;">Create a file named <code>cors.json</code> with the above content, then run:</p>
+                    <pre style="background: #1f2937; color: #f9fafb; padding: 15px; border-radius: 4px; overflow-x: auto;"><code>aws s3api put-bucket-cors --bucket ${document.getElementById('bucketName').value} --cors-configuration file://cors.json</code></pre>
+                    
+                    <p style="color: #92400e; margin-top: 15px; font-size: 0.9rem;">
+                        <strong>Note:</strong> Using "*" for AllowedOrigins allows any website to access your bucket. For production, specify your domain instead.
+                    </p>
+                </div>
+            `;
+            
+            const listStatus = document.getElementById('listStatus');
+            listStatus.innerHTML += corsInstructions;
+        }
+
+        // Copy file URL to clipboard
+        function copyFileUrl(url, element) {
+            if (!navigator.clipboard) {
+                alert(url);
+            }
+            navigator.clipboard.writeText(url).then(function() {
+                // Show copy indicator
+                const copyIndicator = document.createElement('div');
+                copyIndicator.className = 'copy-indicator';
+                copyIndicator.textContent = 'Copied!';
+                copyIndicator.style.position = 'absolute';
+                copyIndicator.style.right = '10px';
+                copyIndicator.style.top = '50%';
+                copyIndicator.style.transform = 'translateY(-50%)';
+                
+                element.style.position = 'relative';
+                element.appendChild(copyIndicator);
+                
+                // Remove indicator after animation
+                setTimeout(() => {
+                    if (copyIndicator.parentNode) {
+                        copyIndicator.parentNode.removeChild(copyIndicator);
+                    }
+                }, 2000);
+            }).catch(function(err) {
+                console.error('Failed to copy: ', err);
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = url;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                
+                // Show fallback indicator
+                const copyIndicator = document.createElement('div');
+                copyIndicator.className = 'copy-indicator';
+                copyIndicator.textContent = 'Copied!';
+                copyIndicator.style.position = 'absolute';
+                copyIndicator.style.right = '10px';
+                copyIndicator.style.top = '50%';
+                copyIndicator.style.transform = 'translateY(-50%)';
+                
+                element.style.position = 'relative';
+                element.appendChild(copyIndicator);
+                
+                setTimeout(() => {
+                    if (copyIndicator.parentNode) {
+                        copyIndicator.parentNode.removeChild(copyIndicator);
+                    }
+                }, 2000);
+            });
+        }
+
+        // Add event listeners for real-time updates
+        document.getElementById('bucketName').addEventListener('input', updateUploadPath);
+        document.getElementById('folderPrefix').addEventListener('input', updateUploadPath);
+    </script>
+</body>
+</html>
