@@ -1,4 +1,4 @@
-import { HttpClient, HttpClientModule, HttpEventType, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpEventType, HttpHeaders } from '@angular/common/http';
 import { Component } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -13,7 +13,6 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [
     CommonModule,
-    HttpClientModule,
     MatCardModule,
     MatToolbarModule,
     MatButtonModule,
