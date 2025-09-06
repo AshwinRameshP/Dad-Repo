@@ -1,0 +1,27 @@
+.container {
+  display: flex;
+  justify-content: center;
+  margin-top: 40px;
+}
+
+mat-card {
+  width: 500px;
+  padding: 20px;
+  text-align: center;
+}
+
+.filename {
+  margin-left: 10px;
+  font-style: italic;
+  display: block;
+  margin-top: 10px;
+}
+
+.upload-btn {
+  margin-top: 20px;
+}
+
+.progress-text {
+  margin-top: 10px;
+  font-weight: bold;
+}

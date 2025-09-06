@@ -3,13 +3,46 @@ import boto3
 import io
 from io import BytesIO
 import pandas as pd
+import base64
+from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
+from email.mime.text import MIMEText
+
+
 
 s3_client = boto3.client('s3')
+ses_client = boto3.client('ses')
+
 
 def filter_PartNO(dataFrame):
     updated_dataFrame = dataFrame
     updated_dataFrame['Part No.'] = updated_dataFrame['Part No.'].str.split(r'\*|\s',expand=False).str[0]
     return updated_dataFrame
+
+def send_email_with_attachment(to_address, from_address, subject, body_text, attachment_bytes, filename):
+    # Create email container
+    msg = MIMEMultipart()
+    msg['Subject'] = subject
+    msg['From'] = from_address
+    msg['To'] = to_address
+
+    # Add body text
+    body = MIMEText(body_text, 'plain')
+    msg.attach(body)
+
+    # Add Excel attachment
+    attachment = MIMEApplication(attachment_bytes)
+    attachment.add_header('Content-Disposition', 'attachment', filename=filename)
+    msg.attach(attachment)
+
+    # Send email
+    response = ses_client.send_raw_email(
+        Source=from_address,
+        Destinations=[to_address],
+        RawMessage={'Data': msg.as_string()}
+    )
+    print("Email sent! Message ID:", response['MessageId'])
+
 
 def lambda_handler(event, context):
     try:
@@ -34,11 +67,22 @@ def lambda_handler(event, context):
 
         updated_df.to_excel(output,index=False)
         print("updated df to excel done")
-        # Upload the new Excel file to the destination S3 bucket
-        destination_bucket_name = 'rm-output'
-        destination_file_name = 'updated_' + s3_File_Name
-        s3_client.put_object(Bucket=destination_bucket_name, Key=destination_file_name, Body=output.getvalue())
-        print("upload to s3 destination done")
+
+        # Email the Excel file
+        sender_email = 'ashwinrameshp@gmail.com'
+        recipient_email = 'ratheeshmotors@yahoo.co.in'  # verified in SES
+        subject = 'Processed Excel File'
+        body_text = 'Please find the updated Excel file attached.'
+
+        send_email_with_attachment(
+            to_address=recipient_email,
+            from_address=sender_email,
+            subject=subject,
+            body_text=body_text,
+            attachment_bytes=output.getvalue(),
+            filename='updated_' + s3_File_Name
+        )
+
         return {
         'statusCode': 200,
         'body': json.dumps('Success!')
