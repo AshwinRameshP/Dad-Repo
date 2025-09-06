@@ -1,0 +1,23 @@
+<mat-toolbar color="primary">
+  <span>RM Two-Wheeler Spares</span>
+</mat-toolbar>
+
+<div class="container">
+  <mat-card>
+    <h2>Upload Purchase Order</h2>
+    <input type="file" (change)="onFileSelected($event)" hidden #fileInput />
+    <button mat-raised-button color="accent" (click)="fileInput.click()">Choose File</button>
+    <span *ngIf="selectedFile" class="filename">{{ selectedFile.name }}</span>
+
+    <div class="upload-btn">
+      <button mat-raised-button color="primary" (click)="uploadFile()" [disabled]="!selectedFile">
+        Upload to S3
+      </button>
+    </div>
+
+    <mat-progress-bar *ngIf="uploadProgress > 0" mode="determinate" [value]="uploadProgress"></mat-progress-bar>
+    <div *ngIf="uploadProgress > 0" class="progress-text">
+      Progress: {{ uploadProgress }}%
+    </div>
+  </mat-card>
+</div>
